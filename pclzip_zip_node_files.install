@@ -1,0 +1,10 @@
+<?php
+// $Id$
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function pclzip_zip_node_files_uninstall() {
+  db_query("DELETE FROM {variable} WHERE name LIKE 'pclzip_zip_node_files%%'");
+}
+
