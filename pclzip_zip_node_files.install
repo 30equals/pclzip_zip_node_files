@@ -2,9 +2,34 @@
 // $Id$
 
 /**
- * Implementation of hook_uninstall().
- */
+* Implementation of hook_install().
+*/
+function pclzip_zip_node_files_install() {
+  // Create tables.
+  drupal_install_schema('pclzip_zip_node_files');
+}
+
+/**
+* Implementation of hook_uninstall().
+*/
 function pclzip_zip_node_files_uninstall() {
+  // Remove tables.
+  drupal_uninstall_schema('pclzip_zip_node_files');
+  // Remove variables.
   db_query("DELETE FROM {variable} WHERE name LIKE 'pclzip_zip_node_files%%'");
 }
 
+/**
+* Implementation of hook_schema().
+*/
+function pclzip_zip_node_files_schema() {
+  $schema['pclzip_zip_node_files'] = array(
+    'fields' => array(
+      'nid'      => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0),
+      'show_download_link' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'size' => 'tiny'),
+      'show_download_link_teaser' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'size' => 'tiny'),
+    ),
+    'primary key' => array('nid'),
+  );
+  return $schema;
+}

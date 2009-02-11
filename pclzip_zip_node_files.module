@@ -112,23 +112,58 @@ function pclzip_zip_node_files_settings() {
 }
 
 /**
+* Implementation of hook_form_alter
+*/
+function pclzip_zip_node_files_form_alter(&$form, $form_state, $form_id) {
+  if (pclzip_zip_node_files_is_type($form['type']['#value']) && isset($form['attachments'])) {
+    // get download link infos
+    $show_link = pclzip_zip_node_files_link_load($form['nid']['#value']);
+    $form['attachments']['pclzip_zip_node_files'] = array(
+      '#type'           =>'fieldset',
+      '#title'            =>t('Download zip'),
+      '#collapsible'  =>TRUE,
+      '#collapsed'    =>TRUE,
+    );
+    $form['attachments']['pclzip_zip_node_files']['show_download_link'] = array(
+      '#type'                   => 'checkbox',
+      '#title'                    => t('Show download zip link'),
+      '#default_value'    => $form['nid']['#value'] ? $show_link->show_download_link : 1,
+      '#description'         => t('Select if you want to show the download zip file link for attachments.'),
+    );
+    if (variable_get('pclzip_zip_node_files_show_in_teaser', 0)) {
+      $form['attachments']['pclzip_zip_node_files']['show_download_link_teaser'] = array(
+        '#type'                  => 'checkbox',
+        '#title'                   => t('Show download zip link in teaser'),
+        '#default_value'   => $form['nid']['#value'] ? $show_link->show_download_link_teaser : 1,
+        '#description'        => t('Select if you want to show the download zip file link for attachments in teaser.'),
+      );
+    }
+  }
+}
+
+/**
  * Implementation of hook_nodeapi().
  */
 function pclzip_zip_node_files_nodeapi(&$node, $op, $teaser) {
 
   switch ($op) {
 
+    case 'insert':
+    case 'update':
+      pclzip_zip_node_files_link_save($node->nid, $node->show_download_link, $node->show_download_link_teaser);
+      break;
+
+    case 'delete':
+      pclzip_zip_node_files_link_delete($node->nid);
+      break;
+
     case 'view':
-      // rebuild content types
-      $types = variable_get('pclzip_zip_node_files_content_type', array('page' =>'page'));
-      $allowed_contents = array();
-      foreach ($types as $value) {
-        array_push($allowed_contents, $value);
-      }
+      // get download link infos
+      $show_link = pclzip_zip_node_files_link_load($node->nid);
       // display the link
-      if (isset($node->files) && user_access('access pclzip_zip_node_files') && in_array($node->type, $allowed_contents, TRUE)) {
-        if (count($node->files)) {
-          if ($teaser && !variable_get('pclzip_zip_node_files_show_in_teaser', 0)) {
+      if (isset($node->files) && user_access('access pclzip_zip_node_files') && pclzip_zip_node_files_is_type($node->type)) {
+        if (count($node->files) && $show_link->show_download_link) {
+          if ($teaser && (!variable_get('pclzip_zip_node_files_show_in_teaser', 0) || !$show_link->show_download_link_teaser)) {
             return;
           }
           $node->content['pclzip_zip_node_files'] = array(
@@ -139,6 +174,52 @@ function pclzip_zip_node_files_nodeapi(&$node, $op, $teaser) {
       }
       break;
   }
+}
+
+/**
+* Load the download link value
+*/
+function pclzip_zip_node_files_link_load($nid) {
+  return db_fetch_object(db_query('SELECT * FROM {pclzip_zip_node_files} WHERE nid=%d', $nid));
+}
+
+/**
+* Save the download link value
+*/
+function pclzip_zip_node_files_link_save($nid, $show_download_link, $show_download_link_teaser) {
+  $values = new stdclass;
+  $values->nid = $nid;
+  $values->show_download_link = $show_download_link;
+  $values->show_download_link_teaser = $show_download_link_teaser;
+  $show_link = pclzip_zip_node_files_link_load($nid);
+  if ($show_link->nid) {
+    // update entry
+    drupal_write_record('pclzip_zip_node_files', $values, 'nid');
+  }
+  else {
+    // insert new entry
+    drupal_write_record('pclzip_zip_node_files', $values);
+  }
+}
+
+/**
+* DELETE the download link value
+*/
+function pclzip_zip_node_files_link_delete($nid) {
+  db_query('DELETE FROM {pclzip_zip_node_files} WHERE nid=%d', $nid);
+}
+
+/**
+ * Check if node type is selected
+ */
+function pclzip_zip_node_files_is_type($type) {
+  // rebuild content types
+  $types = variable_get('pclzip_zip_node_files_content_type', array('page' =>'page'));
+  $allowed_contents = array();
+  foreach ($types as $value) {
+    array_push($allowed_contents, $value);
+  }
+  return in_array($type, $allowed_contents, TRUE);
 }
 
 /**
