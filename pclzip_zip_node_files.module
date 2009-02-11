@@ -63,9 +63,10 @@ function pclzip_zip_node_files_settings() {
   $form = array();
 
   $form['pclzip_zip_node_files']['content_type'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Content Type'),
-    '#collapsible' => TRUE,
+    '#type'           => 'fieldset',
+    '#title'            => t('Content Type to show icon'),
+    '#collapsible'  => TRUE,
+    '#collapsed'    => TRUE,
   );
 
   // get the content types
@@ -76,27 +77,35 @@ function pclzip_zip_node_files_settings() {
     $options[$field->type] = $field->name;
   }
   $form['pclzip_zip_node_files']['content_type']['pclzip_zip_node_files_content_type'] = array(
-    '#type'               => 'checkboxes',
-    '#title'                => t('Content Type'),
-    '#options'            => $options,
-    '#default_value'   => variable_get('pclzip_zip_node_files_content_type', array('page' =>'page')),
+    '#type'                 => 'checkboxes',
+    '#title'                  => t('Content Type for nodes'),
+    '#options'             => $options,
+    '#default_value'  => variable_get('pclzip_zip_node_files_content_type', array('page' =>'page')),
     '#description'       => t('Select the node type where you want the link to appear.'),
   );
-
-  $form['pclzip_zip_node_files']['pclzip_zip_node_files_show_in_teaser'] = array(
-    '#type'               => 'checkbox',
-    '#title'                => t('Show in teaser'),
-    '#default_value'   => variable_get('pclzip_zip_node_files_show_in_teaser', 0),
-    '#description'       => t("Choose if you want to show the link in the node teaser."),
+  $form['pclzip_zip_node_files']['content_type']['pclzip_zip_node_files_content_type_teaser'] = array(
+    '#type'                 => 'checkboxes',
+    '#title'                  => t('Content Type for teaser'),
+    '#options'             => $options,
+    '#default_value'  => variable_get('pclzip_zip_node_files_content_type_teaser', array('page' =>'page')),
+    '#description'       => t('Select the node type where you want the link to appear in teaser.'),
   );
-  $form['pclzip_zip_node_files']['pclzip_zip_node_files_filename'] = array(
-    '#type'               => 'textfield',
-    '#title'                => t('Archive Filename'),
+
+  // filename
+  $form['pclzip_zip_node_files']['filename'] = array(
+    '#type'           => 'fieldset',
+    '#title'            => t('Filename for the zip file'),
+    '#collapsible'  => TRUE,
+    '#collapsed'    => TRUE,
+  );
+  $form['pclzip_zip_node_files']['filename']['pclzip_zip_node_files_filename'] = array(
+    '#type'                 => 'textfield',
+    '#title'                  => t('Archive Filename'),
     '#maxlength'       => 255,
-    '#default_value'   => variable_get('pclzip_zip_node_files_filename', 'archive'),
+    '#default_value'  => variable_get('pclzip_zip_node_files_filename', 'archive'),
     '#description'       => t("Name of the archive file. Don't add the .zip extension."),
   );
-  $form['pclzip_zip_node_files']['help'] = array(
+  $form['pclzip_zip_node_files']['filename']['help'] = array(
     '#type' => 'item',
     '#description' => t('For the <b>Path to Zip</b> and <b>Archive Filename</b> you can add some vars inside :<br/><ul>'
                                   .'<li>%uid for user id</li>'
@@ -115,7 +124,7 @@ function pclzip_zip_node_files_settings() {
 * Implementation of hook_form_alter
 */
 function pclzip_zip_node_files_form_alter(&$form, $form_state, $form_id) {
-  if (pclzip_zip_node_files_is_type($form['type']['#value']) && isset($form['attachments'])) {
+  if (pclzip_zip_node_files_is_type($form['type']['#value'], 'node') && isset($form['attachments'])) {
     // get download link infos
     $show_link = pclzip_zip_node_files_link_load($form['nid']['#value']);
     $form['attachments']['pclzip_zip_node_files'] = array(
@@ -130,7 +139,7 @@ function pclzip_zip_node_files_form_alter(&$form, $form_state, $form_id) {
       '#default_value'    => $form['nid']['#value'] ? $show_link->show_download_link : 1,
       '#description'         => t('Select if you want to show the download zip file link for attachments.'),
     );
-    if (variable_get('pclzip_zip_node_files_show_in_teaser', 0)) {
+    if (pclzip_zip_node_files_is_type($form['type']['#value'], 'teaser')) {
       $form['attachments']['pclzip_zip_node_files']['show_download_link_teaser'] = array(
         '#type'                  => 'checkbox',
         '#title'                   => t('Show download zip link in teaser'),
@@ -161,9 +170,9 @@ function pclzip_zip_node_files_nodeapi(&$node, $op, $teaser) {
       // get download link infos
       $show_link = pclzip_zip_node_files_link_load($node->nid);
       // display the link
-      if (isset($node->files) && user_access('access pclzip_zip_node_files') && pclzip_zip_node_files_is_type($node->type)) {
+      if (isset($node->files) && user_access('access pclzip_zip_node_files') && pclzip_zip_node_files_is_type($node->type, 'node')) {
         if (count($node->files) && $show_link->show_download_link) {
-          if ($teaser && (!variable_get('pclzip_zip_node_files_show_in_teaser', 0) || !$show_link->show_download_link_teaser)) {
+          if ($teaser && (!pclzip_zip_node_files_is_type($node->type, 'teaser') || !$show_link->show_download_link_teaser)) {
             return;
           }
           $node->content['pclzip_zip_node_files'] = array(
@@ -212,9 +221,16 @@ function pclzip_zip_node_files_link_delete($nid) {
 /**
  * Check if node type is selected
  */
-function pclzip_zip_node_files_is_type($type) {
+function pclzip_zip_node_files_is_type($type, $place) {
+  switch ($place) {
+    case 'node':
+      $types = variable_get('pclzip_zip_node_files_content_type', array('page' =>'page'));
+      break;
+    case 'teaser':
+      $types = variable_get('pclzip_zip_node_files_content_type_teaser', array('page' =>'page'));
+      break;
+  }
   // rebuild content types
-  $types = variable_get('pclzip_zip_node_files_content_type', array('page' =>'page'));
   $allowed_contents = array();
   foreach ($types as $value) {
     array_push($allowed_contents, $value);
