@@ -27,7 +27,7 @@ function pclzip_zip_node_files_perm() {
 function pclzip_zip_node_files_menu() {
   $items = array();
 
-  $items['node/%node/get_files'] = array(
+  $items['node/%node/get_zip'] = array(
     'title'                       => 'Get files',
     'page callback'         => 'pclzip_zip_node_files_getzip',
     'page arguments'     => array(1),
@@ -52,72 +52,68 @@ function pclzip_zip_node_files_menu() {
 */
 function pclzip_zip_node_files_settings() {
 
-  // check for the pclzip install
-  $pclzip_path = drupal_get_path('module', 'pclzip').'/pclzip/pclzip.lib.php';
-  if (!is_file($pclzip_path)) {
-    drupal_set_message(t("Could not find the PclZip library file : !pclzip_path", array('!pclzip_path' =>$pclzip_path)), 'error');
-    return;
+  if (pclzip_library_exists()) {
+
+    // build the admin form
+    $form = array();
+
+    $form['pclzip_zip_node_files']['content_type'] = array(
+      '#type'           => 'fieldset',
+      '#title'            => t('Content Type to show icon'),
+      '#collapsible'  => TRUE,
+      '#collapsed'    => TRUE,
+    );
+
+    // get the content types
+    $options = array();
+    $query = "SELECT type, name FROM {node_type}";
+    $result = db_query($query);
+    while ($field = db_fetch_object($result)) {
+      $options[$field->type] = $field->name;
+    }
+    $form['pclzip_zip_node_files']['content_type']['pclzip_zip_node_files_content_type'] = array(
+      '#type'                 => 'checkboxes',
+      '#title'                  => t('Content Type for nodes'),
+      '#options'             => $options,
+      '#default_value'  => variable_get('pclzip_zip_node_files_content_type', array('page' =>'page')),
+      '#description'       => t('Select the node type where you want the link to appear.'),
+    );
+    $form['pclzip_zip_node_files']['content_type']['pclzip_zip_node_files_content_type_teaser'] = array(
+      '#type'                 => 'checkboxes',
+      '#title'                  => t('Content Type for teaser'),
+      '#options'             => $options,
+      '#default_value'  => variable_get('pclzip_zip_node_files_content_type_teaser', array('page' =>'page')),
+      '#description'       => t('Select the node type where you want the link to appear in teaser.'),
+    );
+
+    // filename
+    $form['pclzip_zip_node_files']['filename'] = array(
+      '#type'           => 'fieldset',
+      '#title'            => t('Filename for the zip file'),
+      '#collapsible'  => TRUE,
+      '#collapsed'    => TRUE,
+    );
+    $form['pclzip_zip_node_files']['filename']['pclzip_zip_node_files_filename'] = array(
+      '#type'                 => 'textfield',
+      '#title'                  => t('Archive Filename'),
+      '#maxlength'       => 255,
+      '#default_value'  => variable_get('pclzip_zip_node_files_filename', 'archive'),
+      '#description'       => t("Name of the archive file. Don't add the .zip extension."),
+    );
+    $form['pclzip_zip_node_files']['filename']['help'] = array(
+      '#type' => 'item',
+      '#description' => t('For the <b>Path to Zip</b> and <b>Archive Filename</b> you can add some vars inside :<br/><ul>'
+                                    .'<li>%uid for user id</li>'
+                                    .'<li>%name for user name</li>'
+                                    .'<li>%nid for node id</li>'
+                                    .'<li>%node_title for node title</li>'
+                                    .'<li>%year for actual year</li>'
+                                    .'<li>%month for actual month</li>'
+                                    .'<li>%day for actual day</li></ul>'),
+    );
+
+    return system_settings_form($form);
   }
-
-  // build the admin form
-  $form = array();
-
-  $form['pclzip_zip_node_files']['content_type'] = array(
-    '#type'           => 'fieldset',
-    '#title'            => t('Content Type to show icon'),
-    '#collapsible'  => TRUE,
-    '#collapsed'    => TRUE,
-  );
-
-  // get the content types
-  $options = array();
-  $query = "SELECT type, name FROM {node_type}";
-  $result = db_query($query);
-  while ($field = db_fetch_object($result)) {
-    $options[$field->type] = $field->name;
-  }
-  $form['pclzip_zip_node_files']['content_type']['pclzip_zip_node_files_content_type'] = array(
-    '#type'                 => 'checkboxes',
-    '#title'                  => t('Content Type for nodes'),
-    '#options'             => $options,
-    '#default_value'  => variable_get('pclzip_zip_node_files_content_type', array('page' =>'page')),
-    '#description'       => t('Select the node type where you want the link to appear.'),
-  );
-  $form['pclzip_zip_node_files']['content_type']['pclzip_zip_node_files_content_type_teaser'] = array(
-    '#type'                 => 'checkboxes',
-    '#title'                  => t('Content Type for teaser'),
-    '#options'             => $options,
-    '#default_value'  => variable_get('pclzip_zip_node_files_content_type_teaser', array('page' =>'page')),
-    '#description'       => t('Select the node type where you want the link to appear in teaser.'),
-  );
-
-  // filename
-  $form['pclzip_zip_node_files']['filename'] = array(
-    '#type'           => 'fieldset',
-    '#title'            => t('Filename for the zip file'),
-    '#collapsible'  => TRUE,
-    '#collapsed'    => TRUE,
-  );
-  $form['pclzip_zip_node_files']['filename']['pclzip_zip_node_files_filename'] = array(
-    '#type'                 => 'textfield',
-    '#title'                  => t('Archive Filename'),
-    '#maxlength'       => 255,
-    '#default_value'  => variable_get('pclzip_zip_node_files_filename', 'archive'),
-    '#description'       => t("Name of the archive file. Don't add the .zip extension."),
-  );
-  $form['pclzip_zip_node_files']['filename']['help'] = array(
-    '#type' => 'item',
-    '#description' => t('For the <b>Path to Zip</b> and <b>Archive Filename</b> you can add some vars inside :<br/><ul>'
-                                  .'<li>%uid for user id</li>'
-                                  .'<li>%name for user name</li>'
-                                  .'<li>%nid for node id</li>'
-                                  .'<li>%node_title for node title</li>'
-                                  .'<li>%year for actual year</li>'
-                                  .'<li>%month for actual month</li>'
-                                  .'<li>%day for actual day</li></ul>'),
-  );
-
-  return system_settings_form($form);
 }
 
 /**
@@ -125,27 +121,29 @@ function pclzip_zip_node_files_settings() {
 */
 function pclzip_zip_node_files_form_alter(&$form, $form_state, $form_id) {
   if (pclzip_zip_node_files_is_type($form['type']['#value'], 'node') && isset($form['attachments'])) {
-    // get download link infos
-    $show_link = pclzip_zip_node_files_link_load($form['nid']['#value']);
-    $form['attachments']['pclzip_zip_node_files'] = array(
-      '#type'           =>'fieldset',
-      '#title'            =>t('Download zip'),
-      '#collapsible'  =>TRUE,
-      '#collapsed'    =>TRUE,
-    );
-    $form['attachments']['pclzip_zip_node_files']['show_download_link'] = array(
-      '#type'                   => 'checkbox',
-      '#title'                    => t('Show download zip link'),
-      '#default_value'    => $form['nid']['#value'] ? $show_link->show_download_link : 1,
-      '#description'         => t('Select if you want to show the download zip file link for attachments.'),
-    );
-    if (pclzip_zip_node_files_is_type($form['type']['#value'], 'teaser')) {
-      $form['attachments']['pclzip_zip_node_files']['show_download_link_teaser'] = array(
-        '#type'                  => 'checkbox',
-        '#title'                   => t('Show download zip link in teaser'),
-        '#default_value'   => $form['nid']['#value'] ? $show_link->show_download_link_teaser : 1,
-        '#description'        => t('Select if you want to show the download zip file link for attachments in teaser.'),
+    if (pclzip_library_exists()) {
+      // get download link infos
+      $show_link = pclzip_zip_node_files_link_load($form['nid']['#value']);
+      $form['attachments']['pclzip_zip_node_files'] = array(
+        '#type'           =>'fieldset',
+        '#title'            =>t('Download zip'),
+        '#collapsible'  =>TRUE,
+        '#collapsed'    =>TRUE,
       );
+      $form['attachments']['pclzip_zip_node_files']['show_download_link'] = array(
+        '#type'                   => 'checkbox',
+        '#title'                    => t('Show download zip link'),
+        '#default_value'    => $form['nid']['#value'] ? $show_link->show_download_link : 1,
+        '#description'         => t('Select if you want to show the download zip file link for attachments.'),
+      );
+      if (pclzip_zip_node_files_is_type($form['type']['#value'], 'teaser')) {
+        $form['attachments']['pclzip_zip_node_files']['show_download_link_teaser'] = array(
+          '#type'                  => 'checkbox',
+          '#title'                   => t('Show download zip link in teaser'),
+          '#default_value'   => $form['nid']['#value'] ? $show_link->show_download_link_teaser : 1,
+          '#description'        => t('Select if you want to show the download zip file link for attachments in teaser.'),
+        );
+      }
     }
   }
 }
@@ -175,10 +173,12 @@ function pclzip_zip_node_files_nodeapi(&$node, $op, $teaser) {
           if ($teaser && (!pclzip_zip_node_files_is_type($node->type, 'teaser') || !$show_link->show_download_link_teaser)) {
             return;
           }
-          $node->content['pclzip_zip_node_files'] = array(
-            '#value' => l(theme('pclzip_zip_node_files_download_link'), 'node/'. $node->nid. '/get_files', array('html' =>TRUE)),
-            '#weight' => 50,
-          );
+          if (pclzip_library_exists()) {
+            $node->content['pclzip_zip_node_files'] = array(
+              '#value' => l(theme('pclzip_zip_node_files_download_link'), 'node/'. $node->nid. '/get_zip', array('html' =>TRUE)),
+              '#weight' => 50,
+            );
+          }
         }
       }
       break;
