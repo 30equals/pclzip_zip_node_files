@@ -112,6 +112,21 @@ function pclzip_zip_node_files_settings() {
                                     .'<li>%day for actual day</li></ul>'),
     );
 
+    // manage cck fields
+    $form['pclzip_zip_node_files']['pclzip_extra_cck_fields_fieldset'] = array(
+      '#type' =>'fieldset',
+      '#title' =>t('Extra cck fields'),
+      '#collapsible' =>TRUE,
+      '#collapsed' =>TRUE,
+    );
+    $form['pclzip_zip_node_files']['pclzip_extra_cck_fields_fieldset']['pclzip_zip_node_files_extra_cck_fields'] = array(
+      '#type'               => 'checkboxes',
+      '#title'                => t('CCK Field'),
+      '#options'            => pclzip_get_extra_cck_fields(),
+      '#default_value'   => variable_get('pclzip_zip_node_files_extra_cck_fields', array()),
+      '#description'       => t('Select the CCK field to use.'),
+    );
+
     return system_settings_form($form);
   }
 }
@@ -120,24 +135,24 @@ function pclzip_zip_node_files_settings() {
 * Implementation of hook_form_alter
 */
 function pclzip_zip_node_files_form_alter(&$form, $form_state, $form_id) {
-  if (pclzip_zip_node_files_is_type($form['type']['#value'], 'node') && isset($form['attachments'])) {
+  if (pclzip_zip_node_files_is_type($form['type']['#value'], 'node') && (isset($form['attachments']) || pclzip_zip_node_files_has_cck_fields($form))) {
     if (pclzip_library_exists()) {
       // get download link infos
       $show_link = pclzip_zip_node_files_link_load($form['nid']['#value']);
-      $form['attachments']['pclzip_zip_node_files'] = array(
+      $form['pclzip_zip_node_files'] = array(
         '#type'           =>'fieldset',
         '#title'            =>t('Download zip'),
         '#collapsible'  =>TRUE,
         '#collapsed'    =>TRUE,
       );
-      $form['attachments']['pclzip_zip_node_files']['show_download_link'] = array(
+      $form['pclzip_zip_node_files']['show_download_link'] = array(
         '#type'                   => 'checkbox',
         '#title'                    => t('Show download zip link'),
         '#default_value'    => $form['nid']['#value'] ? $show_link->show_download_link : 1,
         '#description'         => t('Select if you want to show the download zip file link for attachments.'),
       );
       if (pclzip_zip_node_files_is_type($form['type']['#value'], 'teaser')) {
-        $form['attachments']['pclzip_zip_node_files']['show_download_link_teaser'] = array(
+        $form['pclzip_zip_node_files']['show_download_link_teaser'] = array(
           '#type'                  => 'checkbox',
           '#title'                   => t('Show download zip link in teaser'),
           '#default_value'   => $form['nid']['#value'] ? $show_link->show_download_link_teaser : 1,
@@ -167,9 +182,11 @@ function pclzip_zip_node_files_nodeapi(&$node, $op, $teaser) {
     case 'view':
       // get download link infos
       $show_link = pclzip_zip_node_files_link_load($node->nid);
+      // get the files from the node
+      $files = pclzip_zip_node_files_get_node_files($node);
       // display the link
-      if (isset($node->files) && user_access('access pclzip_zip_node_files') && pclzip_zip_node_files_is_type($node->type, 'node')) {
-        if (count($node->files) && $show_link->show_download_link) {
+      if (isset($files) && user_access('access pclzip_zip_node_files') && pclzip_zip_node_files_is_type($node->type, 'node')) {
+        if (count($files) && $show_link->show_download_link) {
           if ($teaser && (!pclzip_zip_node_files_is_type($node->type, 'teaser') || !$show_link->show_download_link_teaser)) {
             return;
           }
@@ -183,6 +200,46 @@ function pclzip_zip_node_files_nodeapi(&$node, $op, $teaser) {
       }
       break;
   }
+}
+
+/**
+* Check for cck fields
+*/
+function pclzip_zip_node_files_has_cck_fields($form) {
+  // get the allod cck fields
+  $cck_fields = variable_get('pclzip_zip_node_files_extra_cck_fields', array());
+  $exists = FALSE;
+  if (!empty($cck_fields)) {
+    foreach ($cck_fields as $field) {
+      if (isset($form[$field])) {
+        $exists = TRUE;
+      }
+    }
+  }
+  return $exists;
+}
+
+/**
+* Get the files from the node
+*/
+function pclzip_zip_node_files_get_node_files($node) {
+  $node_files = array();
+  // get the core attachments
+  if (isset($node->files)) {
+    foreach ($node->files as $file) {
+      array_push($node_files, $file->filepath);
+    }
+  }
+  // get the cck attachments
+  $fields = variable_get('pclzip_zip_node_files_extra_cck_fields', array());
+  foreach ($fields as $field) {
+    if (!empty($node->{$field})) {
+      foreach ($node->{$field} as $file) {
+        array_push($node_files, $file['filepath']);
+      }
+    }
+  }
+  return $node_files;
 }
 
 /**
@@ -212,7 +269,7 @@ function pclzip_zip_node_files_link_save($nid, $show_download_link, $show_downlo
 }
 
 /**
-* DELETE the download link value
+* Delete the download link value
 */
 function pclzip_zip_node_files_link_delete($nid) {
   db_query('DELETE FROM {pclzip_zip_node_files} WHERE nid=%d', $nid);
@@ -277,18 +334,14 @@ function pclzip_zip_node_files_str_replacevars($string, $node) {
 * Main function
 */
 function pclzip_zip_node_files_getzip($node) {
+  // get the files paths from the node
+  $files = pclzip_zip_node_files_get_node_files($node);
 
   // return an error if no files
-  if (empty($node->files)) {
+  if (empty($files)) {
     drupal_set_message(t('No files for this node'), 'error');
-    drupal_goto('node/'. $node->nid);
+    drupal_goto();
     return;
-  }
-
-  // get the files paths from the node
-  $files = array();
-  foreach ($node->files as $file) {
-    array_push($files, $file->filepath);
   }
 
   // get the filename
@@ -300,11 +353,11 @@ function pclzip_zip_node_files_getzip($node) {
 
   if ($v_list == 0) {
     drupal_set_message($archive->errorInfo(true), 'error');
-    drupal_goto('node/'. $node->nid);
+    drupal_goto();
     return;
   }
 
   // send the archive
   module_invoke("pclzip", 'send_file', $filename);
-  drupal_goto('node/'. $node->nid);
+  drupal_goto();
 }
