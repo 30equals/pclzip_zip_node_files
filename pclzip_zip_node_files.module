@@ -109,23 +109,26 @@ function pclzip_zip_node_files_settings() {
                                     .'<li>%node_title for node title</li>'
                                     .'<li>%year for actual year</li>'
                                     .'<li>%month for actual month</li>'
-                                    .'<li>%day for actual day</li></ul>'),
+                                    .'<li>%day for actual day</li></ul>'
+                                    .'Spaces will be replaced by undescore "_"'),
     );
 
-    // manage cck fields
-    $form['pclzip_zip_node_files']['pclzip_extra_cck_fields_fieldset'] = array(
-      '#type' =>'fieldset',
-      '#title' =>t('Extra cck fields'),
-      '#collapsible' =>TRUE,
-      '#collapsed' =>TRUE,
-    );
-    $form['pclzip_zip_node_files']['pclzip_extra_cck_fields_fieldset']['pclzip_zip_node_files_extra_cck_fields'] = array(
-      '#type'               => 'checkboxes',
-      '#title'                => t('CCK Field'),
-      '#options'            => pclzip_get_extra_cck_fields(),
-      '#default_value'   => variable_get('pclzip_zip_node_files_extra_cck_fields', array()),
-      '#description'       => t('Select the CCK field to use.'),
-    );
+    if (module_exists('content')) {
+      // manage cck fields
+      $form['pclzip_zip_node_files']['pclzip_extra_cck_fields_fieldset'] = array(
+        '#type' =>'fieldset',
+        '#title' =>t('Extra cck fields'),
+        '#collapsible' =>TRUE,
+        '#collapsed' =>TRUE,
+      );
+      $form['pclzip_zip_node_files']['pclzip_extra_cck_fields_fieldset']['pclzip_zip_node_files_extra_cck_fields'] = array(
+        '#type'               => 'checkboxes',
+        '#title'                => t('CCK Field'),
+        '#options'            => pclzip_get_extra_cck_fields(),
+        '#default_value'   => variable_get('pclzip_zip_node_files_extra_cck_fields', array()),
+        '#description'       => t('Select the CCK field to use.'),
+      );
+    }
 
     return system_settings_form($form);
   }
@@ -323,6 +326,7 @@ function pclzip_zip_node_files_str_replacevars($string, $node) {
     '%year' =>date('Y'),
     '%month' =>date('m'),
     '%day' =>date('d'),
+    ' ' =>'_'
   );
   foreach ($replacers as $key=>$value) {
     $string = str_replace($key, $value, $string);
