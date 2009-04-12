@@ -129,6 +129,15 @@ function pclzip_zip_node_files_settings() {
         '#description'       => t('Select the CCK field to use.'),
       );
     }
+    // manage webfm files
+    if (module_exists('webfm')) {
+      $form['pclzip_zip_node_files']['pclzip_zip_node_files_use_webfm'] = array(
+        '#type'               => 'checkbox',
+        '#title'                => t('Use webfm files'),
+        '#default_value'   => variable_get('pclzip_zip_node_files_use_webfm', 1),
+        '#description'       => t('Select if you want to get webfm files.'),
+      );
+    }
 
     return system_settings_form($form);
   }
@@ -138,7 +147,7 @@ function pclzip_zip_node_files_settings() {
 * Implementation of hook_form_alter
 */
 function pclzip_zip_node_files_form_alter(&$form, $form_state, $form_id) {
-  if (pclzip_zip_node_files_is_type($form['type']['#value'], 'node') && (isset($form['attachments']) || pclzip_zip_node_files_has_cck_fields($form))) {
+  if (pclzip_zip_node_files_is_type($form['type']['#value'], 'node') && (isset($form['attachments']) || pclzip_zip_node_files_has_cck_fields($form) || isset($form['webfm-attach']))) {
     if (pclzip_library_exists()) {
       // get download link infos
       $show_link = pclzip_zip_node_files_link_load($form['nid']['#value']);
@@ -226,6 +235,7 @@ function pclzip_zip_node_files_has_cck_fields($form) {
 * Get the files from the node
 */
 function pclzip_zip_node_files_get_node_files($node) {
+//drupal_set_message(print_r($node,true));
   $node_files = array();
   // get the core attachments
   if (isset($node->files)) {
@@ -239,6 +249,14 @@ function pclzip_zip_node_files_get_node_files($node) {
     if (!empty($node->{$field})) {
       foreach ($node->{$field} as $file) {
         array_push($node_files, $file['filepath']);
+      }
+    }
+  }
+  // get the webfm attachments
+  if (variable_get('pclzip_zip_node_files_use_webfm', 1)) {
+    if (isset($node->webfm_files)) {
+      foreach ($node->webfm_files as $file) {
+        array_push($node_files, $file->p. '/'. $file->n);
       }
     }
   }
