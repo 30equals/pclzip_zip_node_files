@@ -1,4 +1,3 @@
-; $Id$
 
 name = PclZip Zip Node Files
 description = Gives the ability to zip the files contained in a node
