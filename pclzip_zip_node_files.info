@@ -1,7 +1,5 @@
-
 name = PclZip Zip Node Files
 description = Gives the ability to zip the files contained in a node
 dependencies[] = pclzip
-dependencies[] = upload
 package = PclZip
-core = 6.x
+core = 7.x
