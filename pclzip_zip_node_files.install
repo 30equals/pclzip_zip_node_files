@@ -1,23 +1,4 @@
 <?php
-
-/**
-* Implementation of hook_install().
-*/
-function pclzip_zip_node_files_install() {
-  // Create tables.
-  drupal_install_schema('pclzip_zip_node_files');
-}
-
-/**
-* Implementation of hook_uninstall().
-*/
-function pclzip_zip_node_files_uninstall() {
-  // Remove tables.
-  drupal_uninstall_schema('pclzip_zip_node_files');
-  // Remove variables.
-  db_query("DELETE FROM {variable} WHERE name LIKE 'pclzip_zip_node_files%%'");
-}
-
 /**
 * Implementation of hook_schema().
 */
@@ -32,3 +13,14 @@ function pclzip_zip_node_files_schema() {
   );
   return $schema;
 }
+
+/**
+* Implementation of hook_uninstall().
+*/
+function pclzip_zip_node_files_uninstall() {
+  // Remove tables.
+  drupal_uninstall_schema('pclzip_zip_node_files');
+  // Remove variables.
+  db_query("DELETE FROM {variable} WHERE name LIKE 'pclzip_zip_node_files%%'");
+}
+
