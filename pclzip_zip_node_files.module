@@ -148,7 +148,7 @@ function pclzip_zip_node_files_settings() {
 function pclzip_zip_node_files_form_alter(&$form, $form_state, $form_id) {
 //  if (pclzip_zip_node_files_is_type($form['#type']['#value'], 'node') && (isset($form['attachments']) || pclzip_zip_node_files_has_cck_fields($form) || isset($form['webfm-attach']))) {
   
-  if (pclzip_zip_node_files_is_type($form['type']['#value'], 'node')) {
+  if (pclzip_zip_node_files_is_type($form['#type']['#value'], 'node')) {
     if (pclzip_library_exists()) {
       // get download link infos
       $show_link = pclzip_zip_node_files_link_load($form['nid']['#value']);
@@ -187,14 +187,14 @@ function pclzip_zip_node_files_node_view($node, $view_mode, $langcode) {
   
   // display the link
   if (isset($files) && user_access('access pclzip_zip_node_files') && pclzip_zip_node_files_is_type($node->type, 'node')) {
-    if (count($files) && $show_link->show_download_link) {
-//      if ($teaser && (!pclzip_zip_node_files_is_type($node->type, 'teaser') || !$show_link->show_download_link_teaser)) {
-//        return;
-//      }
+    if (count($files) && isset($show_link->show_download_link)) {
+      if ($view_mode == 'teaser' && (!pclzip_zip_node_files_is_type($node->type, 'teaser') || !$show_link->show_download_link_teaser)) {
+        return '';
+      }
       if (pclzip_library_exists()) {
         $node->content['pclzip_zip_node_files'] = array(
             '#weight' => 50,
-            '#prefix' => '<span class="zip-link">testtest',
+            '#prefix' => '<span class="zip-link">',
             '#markup' =>  l(theme('pclzip_zip_node_files_download_link'), 'node/' . $node->nid . '/get_zip', array('html' => TRUE)),
             '#suffix' => '</span>',
         );
