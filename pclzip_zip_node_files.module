@@ -1,8 +1,8 @@
 <?php
 
 /**
-* Display help and module information.
-*/
+ *   Display help and module information.
+ */
 function pclzip_zip_node_files_help($path, $arg) {
   $output = '';
   switch ($path) {
@@ -14,15 +14,15 @@ function pclzip_zip_node_files_help($path, $arg) {
 }
 
 /**
-* Valid permissions for this module.
-*/
+ * Valid permissions for this module.
+ */
 function pclzip_zip_node_files_permission() {
   return array('access pclzip_zip_node_files', 'administer pclzip_zip_node_files');
 }
 
 /**
-* Implementation of hook_menu.
-*/
+ * Implements hook_menu().
+ */
 function pclzip_zip_node_files_menu() {
   $items = array();
 
@@ -47,8 +47,8 @@ function pclzip_zip_node_files_menu() {
 }
 
 /**
-* Admin settings.
-*/
+ * Admin settings.
+ */
 function pclzip_zip_node_files_settings() {
 
   if (pclzip_library_exists()) {
@@ -143,11 +143,10 @@ function pclzip_zip_node_files_settings() {
 }
 
 /**
-* Implementation of hook_form_alter.
-*/
+ * Implements hook_form_alter().
+ */
 function pclzip_zip_node_files_form_alter(&$form, &$form_state, $form_id) {
 //  if (pclzip_zip_node_files_is_type($form['#type']['#value'], 'node') && (isset($form['attachments']) || pclzip_zip_node_files_has_cck_fields($form) || isset($form['webfm-attach']))) {
-  
   if (pclzip_zip_node_files_is_type($form['#type']['#value'], 'node')) {
     if (pclzip_library_exists()) {
       // get download link infos
@@ -177,14 +176,13 @@ function pclzip_zip_node_files_form_alter(&$form, &$form_state, $form_id) {
 }
 
 /**
- * Implementation of hook_node_view.
+ * Implements hook_node_view().
  */
 function pclzip_zip_node_files_node_view($node, $view_mode, $langcode) {
   $show_link = pclzip_zip_node_files_link_load($node->nid);
 
   // get the files from the node
   $files = pclzip_zip_node_files_get_node_files($node);
-  
   // display the link
   if (isset($files) && user_access('access pclzip_zip_node_files') && pclzip_zip_node_files_is_type($node->type, 'node')) {
     if (count($files) && isset($show_link->show_download_link)) {
@@ -204,30 +202,29 @@ function pclzip_zip_node_files_node_view($node, $view_mode, $langcode) {
 }
 
 /**
- * Implementation of hook_node_update.
+ * Implements hook_node_update().
  */
 function pclzip_zip_node_files_node_update($node) {
-   pclzip_zip_node_files_link_save($node->nid, $node->show_download_link, $node->show_download_link_teaser);
+  pclzip_zip_node_files_link_save($node->nid, $node->show_download_link, $node->show_download_link_teaser);
 }
 
 /**
- * Implementation of hook_node_delete.
+ * Implements hook_node_delete().
  */
 function pclzip_zip_node_files_node_delete($node) {
-   pclzip_zip_node_files_link_delete($node->nid);
+  pclzip_zip_node_files_link_delete($node->nid);
 }
 
 
 /**
-* Get the fields from the node
-*/
+ * Get the fields from the node
+ */
 function pclzip_zip_node_files_get_node_fields($node) {
 
-  $available_fields = array();  
+  $available_fields = array();
   $fields = field_info_fields();
   $allowed_types = variable_get('pclzip_available_fields', array('image,file'));
-  
-   foreach ($fields as $field_name => $field) {
+  foreach ($fields as $field_name => $field) {
     $bundles = array();
     foreach ($field['bundles'] as $available_bundles) {
       $bundles = array_merge($bundles, $available_bundles);
@@ -242,42 +239,39 @@ function pclzip_zip_node_files_get_node_fields($node) {
 }
 
 /**
-* Get the files from the node
-*/
+ * Get the files from the node
+ */
 function pclzip_zip_node_files_get_node_files($node) {
 
   $available_fields = pclzip_zip_node_files_get_node_fields($node);
   $nodefiles = array();
-  
   foreach ($available_fields as $field) {
     $nodefields = field_get_items('node', $node, $field, $node->language);
-    
-     foreach ($nodefields as $file) {
-       $nodefiles[] = drupal_realpath($file['uri']);
-     }
+    foreach ($nodefields as $file) {
+      $nodefiles[] = drupal_realpath($file['uri']);
+    }
   }
-  
+
   return $nodefiles;
 }
 
 /**
-* Load the download link value
-*/
+ * Load the download link value
+ */
 function pclzip_zip_node_files_link_load($nid) {
   $zipnode = '';
   $result = db_query('SELECT * FROM {pclzip_zip_node_files} WHERE nid=:nid', array(':nid' =>  $nid));
-  
   foreach ($result as $row) {
   // Loop through your query results and do some stuff.
 
     $zipnode = $row;
-}
- return $zipnode; 
+  }
+  return $zipnode;
 }
 
 /**
-* Save the download link value
-*/
+ * Save the download link value
+ */
 function pclzip_zip_node_files_link_save($nid, $show_download_link, $show_download_link_teaser) {
   $values = new stdclass;
   $values->nid = $nid;
@@ -295,8 +289,8 @@ function pclzip_zip_node_files_link_save($nid, $show_download_link, $show_downlo
 }
 
 /**
-* Delete the download link value
-*/
+ * Delete the download link value
+ */
 function pclzip_zip_node_files_link_delete($nid) {
   db_query('DELETE FROM {pclzip_zip_node_files} WHERE nid=%d', $nid);
 }
@@ -322,7 +316,7 @@ function pclzip_zip_node_files_is_type($type, $place) {
 }
 
 /**
- * Implementation of hook_theme().
+ * Implements hook_theme().
  */
 function pclzip_zip_node_files_theme() {
   return array(
@@ -334,8 +328,8 @@ function pclzip_zip_node_files_theme() {
 }
 
 /**
-* Helper function to replace the string with defined vars
-*/
+ * Helper function to replace the string with defined vars
+ */
 function pclzip_zip_node_files_str_replacevars($string, $node) {
   global $user;
   $replacers = array(
@@ -358,8 +352,8 @@ function pclzip_zip_node_files_str_replacevars($string, $node) {
 }
 
 /**
-* Main function
-*/
+ * Main function
+ */
 function pclzip_zip_node_files_getzip($node) {
   // get the files paths from the node
   $files = pclzip_zip_node_files_get_node_files($node);
